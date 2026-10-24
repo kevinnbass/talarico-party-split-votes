@@ -4,6 +4,9 @@ Texas House record votes, 2019–2025.
 
 ![Talarico sided with Republicans less often than 194 of 210 House members](output/talarico_party_split.png)
 
+A two-panel version adds the House Democrats alone, with their median:
+[output/talarico_party_split_two_panel.png](output/talarico_party_split_two_panel.png).
+
 ## The finding
 
 On the Texas House votes where most Republicans and most Democrats voted on opposite sides, James Talarico voted with
@@ -98,7 +101,8 @@ This changes nothing about Talarico's numbers. In the one-Legislature checks he 
 
 ```bash
 pip install -r requirements.txt
-python make_figure.py       # -> output/talarico_party_split.png and data/house_split_votes.csv
+python make_figure.py       # -> output/talarico_party_split.png, output/talarico_party_split_two_panel.png,
+                            #    data/house_split_votes.csv
 python robustness.py        # -> output/robustness.csv
 ```
 

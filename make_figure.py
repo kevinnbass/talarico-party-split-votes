@@ -2,7 +2,8 @@
 """make_figure.py: how often each Texas House member voted with the Republican majority when the parties split, 2019-2025.
 
 Reads the LegiScan session datasets in data/legiscan/ (MANIFEST.json lists each file with its sha256), and writes
-data/house_split_votes.csv and output/talarico_party_split.png. Rule, in order:
+data/house_split_votes.csv, output/talarico_party_split.png and
+output/talarico_party_split_two_panel.png (the same chart above the Democrats alone). Rule, in order:
   1. House record votes only, one per session and record number (LegiScan sometimes files one record vote under several
      bills; the copies are skipped).
   2. Each party's side is the way most of its members voted, counting Yea and Nay only. A tie inside a party drops the vote.
@@ -56,30 +57,49 @@ def rates(splits, party, min_votes=MIN_VOTES):
     return sorted(rows, key=lambda r: r['rate'])
 
 
-def draw(rows, name, n_splits, path, repo_url):
+INK, SOFT, GRID, AXIS = '#1a1a1a', '#5f5f5f', '#e6e6e6', '#b5b5b5'
+HUE = {'D': '#2f7ad9', 'R': '#e0605f'}
+MUTED, REFERENCE = '#c9c7bd', '#9a9a9a'
+
+
+def figure(height):
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     from matplotlib import font_manager
     if any('Inter' in f.name for f in font_manager.fontManager.ttflist):
         plt.rcParams['font.family'] = 'Inter'
-    INK, SOFT, GRID = '#1a1a1a', '#5f5f5f', '#e6e6e6'
-    HUE = {'D': '#2f7ad9', 'R': '#e0605f'}
-    me = next(r for r in rows if r['people_id'] == FOCUS)
-    above = sum(r['rate'] > me['rate'] for r in rows)
+    return plt.figure(figsize=(8, height), dpi=200)
 
-    fig = plt.figure(figsize=(8, 4.5), dpi=200)
-    ax = fig.add_axes([0.075, 0.25, 0.9, 0.53])
-    xs = range(len(rows))
-    ax.bar(xs, [100 * r['rate'] for r in rows], width=0.82, align='edge',
-           color=[INK if r is me else HUE[r['party']] for r in rows], linewidth=0, zorder=2)
-    ax.set_xlim(-0.5, len(rows) + 0.5); ax.set_ylim(0, 100)
-    ax.set_yticks([0, 25, 50, 75, 100]); ax.set_yticklabels([f'{v}%' for v in (0, 25, 50, 75, 100)], fontsize=8.5, color=SOFT)
+
+def axes(fig, top, ymax, ticks):
+    """A 2.385-inch-tall bar axis whose panel starts `top` inches above the bottom of the figure."""
+    H = fig.get_figheight()
+    ax = fig.add_axes([0.075, (top - 3.375) / H, 0.9, 2.385 / H])
+    ax.set_ylim(0, ymax); ax.set_yticks(ticks); ax.set_yticklabels([f'{v}%' for v in ticks], fontsize=8.5, color=SOFT)
     ax.set_xticks([]); ax.tick_params(axis='y', length=0, pad=6)
     ax.grid(axis='y', color=GRID, linewidth=0.8, zorder=0)
-    for s in ('top', 'right', 'left'): ax.spines[s].set_visible(False)
-    ax.spines['bottom'].set_color('#b5b5b5')
+    for side in ('top', 'right', 'left'): ax.spines[side].set_visible(False)
+    ax.spines['bottom'].set_color(AXIS)
+    return ax
 
+
+def heading(fig, top, title, subtitle):
+    H = fig.get_figheight()
+    fig.text(0.04, (top - 0.34) / H, title, fontsize=13.5, fontweight='bold', color=INK)
+    fig.text(0.04, (top - 0.585) / H, subtitle, fontsize=9.5, color=SOFT)
+
+
+def panel_all(fig, top, rows, name):
+    """Every charted member, Democrats blue, Republicans red, Talarico black."""
+    me = next(r for r in rows if r['people_id'] == FOCUS)
+    above = sum(r['rate'] > me['rate'] for r in rows)
+    heading(fig, top, f"{name[FOCUS].split()[-1]} sided with Republicans less often than {above} of {len(rows)} House members",
+            'Share of party-split Texas House votes cast with the Republican majority, 2019\u20132025')
+    ax = axes(fig, top, 100, [0, 25, 50, 75, 100])
+    ax.bar(range(len(rows)), [100 * r['rate'] for r in rows], width=0.82, align='edge',
+           color=[INK if r is me else HUE[r['party']] for r in rows], linewidth=0, zorder=2)
+    ax.set_xlim(-0.5, len(rows) + 0.5)
     # party brackets under the bars
     for p, word in (('D', 'Democrats'), ('R', 'Republicans')):
         ix = [i for i, r in enumerate(rows) if r['party'] == p]
@@ -87,20 +107,64 @@ def draw(rows, name, n_splits, path, repo_url):
         a, b = min(ix), max(ix) + 1
         ax.plot([a + 0.3, b - 0.3], [-5, -5], color=HUE[p], linewidth=2.6, clip_on=False, solid_capstyle='butt')
         ax.text((a + b) / 2, -11, f'{len(ix)} {word}: {100 * lo:.1f}% to {100 * hi:.1f}%', ha='center', va='top', fontsize=8.5, color=INK)
-
-    # Talarico
     mi = rows.index(me) + 0.41
     ax.plot([mi, mi], [100 * me['rate'] + 1.2, 76], color=INK, linewidth=0.8, zorder=3)
     ax.text(mi + 2.2, 85, f"{name[FOCUS].split()[-1]} {100 * me['rate']:.1f}%", fontsize=10, fontweight='bold', color=INK, va='bottom')
     ax.text(mi + 2.2, 84, f"{me['with_r']} of {me['votes']:,} split votes", fontsize=8.5, color=SOFT, va='top')
+    return ax
 
-    fig.text(0.04, 0.925, f"{name[FOCUS].split()[-1]} sided with Republicans less often than {above} of {len(rows)} House members",
-             fontsize=13.5, fontweight='bold', color=INK)
-    fig.text(0.04, 0.87, f'Share of party-split Texas House votes cast with the Republican majority, 2019–2025', fontsize=9.5, color=SOFT)
-    fig.text(0.04, 0.075, f'Each bar is one member with {MIN_VOTES}+ such votes, lowest to highest. A split vote ({n_splits:,} in all): '
-             'most Republicans and most Democrats voted on opposite sides.', fontsize=7, color=SOFT)
-    fig.text(0.04, 0.035, 'Data: LegiScan, Texas House record votes, 86th–89th Legislatures (CC BY 4.0).'
+
+def panel_dems(fig, top, rows, name):
+    """Democrats only, grey, Talarico blue, with the Democratic median."""
+    import statistics
+    dems = [r for r in rows if r['party'] == 'D']
+    me = next(r for r in dems if r['people_id'] == FOCUS)
+    higher = sum(r['rate'] > me['rate'] for r in dems)
+    mid = 100 * statistics.median(r['rate'] for r in dems)
+    heading(fig, top, f"{name[FOCUS].split()[-1]} sided with Republicans less often than most House Democrats",
+            'Share of party-split Texas House votes cast with the Republican majority, 2019\u20132025')
+    ymax = 10 * -(-100 * max(r['rate'] for r in dems) // 10)
+    ax = axes(fig, top, ymax, list(range(0, int(ymax) + 1, 10)))
+    ax.bar(range(len(dems)), [100 * r['rate'] for r in dems], width=0.8, align='edge',
+           color=[HUE['D'] if r is me else MUTED for r in dems], linewidth=0, zorder=2)
+    ax.set_xlim(-0.5, len(dems) + 0.5)
+    ax.axhline(mid, color=REFERENCE, linewidth=0.9, dashes=(4, 3), zorder=3)
+    ax.text(0.3, mid + 0.8, f'Median {mid:.1f}%', fontsize=8.5, color=SOFT, va='bottom')
+    mi = dems.index(me) + 0.4
+    ax.plot([mi, mi], [100 * me['rate'] + 0.5, 14.5], color=HUE['D'], linewidth=0.8, zorder=3)
+    ax.text(mi + 0.9, 19.6, f"{name[FOCUS].split()[-1]} {100 * me['rate']:.1f}%: {me['with_r']} of {me['votes']:,}",
+            fontsize=10, fontweight='bold', color=INK, va='bottom')
+    ax.text(mi + 0.9, 19.0, f'{higher} of {len(dems)} House Democrats sided with Republicans more often', fontsize=8.5, color=SOFT, va='top')
+    return ax
+
+
+def note(fig, y, text):
+    fig.text(0.04, y / fig.get_figheight(), text, fontsize=8, color=SOFT)
+
+
+def footer(fig, n_splits, repo_url, lead=''):
+    H = fig.get_figheight()
+    fig.text(0.04, 0.34 / H, f'{lead}A split vote ({n_splits:,} in all): most Republicans and most Democrats voted on opposite sides.', fontsize=7, color=SOFT)
+    fig.text(0.04, 0.16 / H, 'Data: LegiScan, Texas House record votes, 86th\u201389th Legislatures (CC BY 4.0).'
              + (f'  Method and code: {repo_url}' if repo_url else ''), fontsize=7, color=SOFT)
+
+
+def draw(rows, name, n_splits, path, repo_url):
+    """One panel: every charted member."""
+    fig = figure(4.5)
+    panel_all(fig, 4.5, rows, name)
+    footer(fig, n_splits, repo_url, f'Each bar is one member with {MIN_VOTES}+ such votes, lowest to highest. ')
+    fig.savefig(path, dpi=200, facecolor='white')
+
+
+def draw_two_panel(rows, name, n_splits, path, repo_url):
+    """Every charted member on top, House Democrats alone below."""
+    fig = figure(8.7)
+    panel_all(fig, 8.7, rows, name)
+    note(fig, 4.72, f'Each bar is one House member with {MIN_VOTES}+ such votes, lowest to highest')
+    panel_dems(fig, 4.4, rows, name)
+    note(fig, 0.80, f'Each bar is one House Democrat with {MIN_VOTES}+ such votes, lowest to highest')
+    footer(fig, n_splits, repo_url)
     fig.savefig(path, dpi=200, facecolor='white')
 
 
@@ -113,6 +177,7 @@ def main():
         for r in rows: w.writerow([name[r['people_id']], r['people_id'], r['party'], r['with_r'], r['votes'], f"{r['rate']:.4f}"])
     os.makedirs(os.path.join(HERE, 'output'), exist_ok=True)
     draw(rows, name, len(splits), os.path.join(HERE, 'output', 'talarico_party_split.png'), repo_url)
+    draw_two_panel(rows, name, len(splits), os.path.join(HERE, 'output', 'talarico_party_split_two_panel.png'), repo_url)
     me = next(r for r in rows if r['people_id'] == FOCUS)
     print(f"{len(splits)} split votes; {len(rows)} members ({sum(r['party'] == 'D' for r in rows)} D, {sum(r['party'] == 'R' for r in rows)} R); "
           f"Talarico {me['with_r']}/{me['votes']} = {100 * me['rate']:.1f}%; higher: {sum(r['rate'] > me['rate'] for r in rows)} members, "
