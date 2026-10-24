@@ -1,0 +1,11 @@
+check,split_votes,min_votes,talarico,democrats,democrats_higher,democrats_lower,members,members_higher
+As charted,2642,500,"3.2% (80 of 2,482)",82,66,15,210,194
+Cutoff 100 votes instead of 500,2642,100,"3.2% (80 of 2,482)",87,71,15,227,211
+Cutoff 250 votes instead of 500,2642,250,"3.2% (80 of 2,482)",87,71,15,226,210
+Cutoff 1000 votes instead of 500,2642,1000,"3.2% (80 of 2,482)",64,50,13,147,133
+86th Legislature only,307,100,4.3% (13 of 299),65,56,8,148,139
+87th Legislature only,676,100,2.4% (16 of 672),66,49,16,149,132
+88th Legislature only,663,100,2.0% (13 of 660),64,52,11,149,137
+89th Legislature only,996,100,4.5% (38 of 851),62,42,19,149,129
+Final passage and conference/concurrence votes only,927,150,4.1% (35 of 852),82,64,17,211,193
+"Procedural motions, motions to table and statements removed",2199,300,"3.4% (71 of 2,068)",82,64,17,211,193
