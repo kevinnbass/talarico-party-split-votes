@@ -3,9 +3,8 @@
 Texas House Journal. Writes checks/journal_totals.csv with the Journal's sentence, page, PDF link and PDF sha256, so any
 row can be checked by opening the Journal.
 
-The Journal side comes from a separate parse of all 467 House Journal PDFs for 2019-2025 (text layer, no OCR), given as
-the first argument (its journal_votes.csv); that parse is not part of this repository, but its output, the CSV written
-here, is. Usage: python checks/journal_totals.py <journal_votes.csv>"""
+Reads checks/journal/records.csv, the Journal record votes parsed by checks/journal/journal_members.py (run
+checks/journal/fetch_journals.py and that script first). Usage: python checks/journal_totals.py [records.csv]"""
 import collections, csv, os, re, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from make_figure import HERE, load
@@ -20,7 +19,8 @@ CODE = {'86th Legislature Regular Session': '86R', '87th Legislature Regular Ses
 def main():
     csv.field_size_limit(10 ** 9)
     J = collections.defaultdict(list)
-    for r in csv.DictReader(open(sys.argv[1])):
+    src = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, 'checks', 'journal', 'records.csv')
+    for r in csv.DictReader(open(src)):
         J[(r['session'], r['rv'])].append(r)
     _, _, splits = load()
     count = collections.Counter()

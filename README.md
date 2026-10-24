@@ -78,10 +78,15 @@ The votes come from [LegiScan](https://legiscan.com)'s public datasets for each 
   also has 53 split votes that are missing from LegiScan's data. Counting them, he is at 81 of 2,523 (3.2%), with
   66 of 82 Democrats and 194 of 210 members higher
   ([checks/journal_rates.csv](checks/journal_rates.csv): Journal counts first, LegiScan counts after).
-- **Talarico's votes.** His position matches the Journal on all 10,460 record votes, split or not.
+- **Talarico's votes.** His split votes are covered above. A separate check of his whole record, run before this
+  repository, found his position matches the Journal on all 10,460 record votes, split or not.
 
 The Journal was read from the text layer of all 467 House Journal PDFs for 2019–2025 (no OCR), and printed names were
-matched to LegiScan's member list for each session by surname, with initials where the Journal uses them.
+matched to LegiScan's member list for each session by surname, with initials where the Journal uses them. The PDFs
+are not stored here: [checks/journal/journals.csv](checks/journal/journals.csv) lists each one with its official
+address, the address it was downloaded from and its sha256, and the scripts below download and check them. 415 come
+from the Texas Legislative Reference Library; the other 52 were on journals.house.texas.gov, which no longer serves
+them, and come from Internet Archive captures of those same addresses.
 
 ## What this does not measure
 
@@ -106,7 +111,17 @@ python make_figure.py       # -> output/talarico_party_split.png, output/talaric
 python robustness.py        # -> output/robustness.csv
 ```
 
-[data/house_split_votes.csv](data/house_split_votes.csv) has every charted member's count, total and rate.
+Everything the figures need is in this repository. [data/house_split_votes.csv](data/house_split_votes.csv) has every
+charted member's count, total and rate.
+
+The House Journal checks download the Journal PDFs (176 MB) and need `curl` and `pdftotext` (poppler-utils):
+
+```bash
+python checks/journal/fetch_journals.py    # 467 Journal PDFs, each checked against its sha256, and their text layers
+python checks/journal/journal_members.py   # -> checks/journal_member_disagreements.csv, checks/journal_rates.csv,
+                                           #    checks/journal_members_summary.json
+python checks/journal_totals.py            # -> checks/journal_totals.csv
+```
 
 ## License
 
@@ -114,4 +129,5 @@ python robustness.py        # -> output/robustness.csv
 - **LegiScan data** (`data/legiscan/`): © LegiScan LLC, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/),
   included unmodified. LegiScan does not endorse this work.
 - **Derived data** (`data/house_split_votes.csv`, `output/`, `checks/`): CC BY 4.0, computed from the LegiScan data
-  by the scripts here.
+  and the House Journal by the scripts here.
+- **Texas House Journal:** a public record of the Texas House of Representatives. It is linked, not copied.
